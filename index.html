@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Pump Control</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f9;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background: #fff;
+      padding: 20px 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      width: 400px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      color: #0056d6;
+    }
+    #status {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #555;
+    }
+    .control-group {
+      margin: 15px 0;
+      text-align: left;
+    }
+    .control-group label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    input[type="range"] {
+      width: 70%;
+    }
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: #0056d6;
+    }
+    .slider-value {
+      margin-left: 10px;
+      font-weight: bold;
+      color: #0056d6;
+    }
+    .auto-mode-container {
+      background-color: #ffc0cb;
+      border: 1px solid #ff6f91;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .auto-mode-container label {
+      display: flex;
+      justify-content: center;
+      font-weight: bold;
+    }
+    .history-button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #0056d6;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s ease;
+    }
+    .history-button:hover {
+      background-color: #003c9a;
+    }
+    .history-button a {
+      text-decoration: none;
+      color: white;
+    }
+    .execute-button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s ease;
+    }
+    .execute-button:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ESP8266 Pump Control</h1>
+    <p id="status">Connecting...</p>
+    <p class="info" id="moisture">Moisture: --%</p>
+    <p class="info" id="temperature">Temperature: --°C</p>
+    <div class="control-group">
+      <label>
+        Pump Control: 
+        <input id="togglePump" type="checkbox">
+      </label>
+    </div>
+    <div class="control-group">
+      <label>
+        Speed:
+        <input id="pumpSpeed" type="range" min="0" max="255" value="0">
+        <span id="pumpSpeedValue" class="slider-value">0</span>
+      </label>
+    </div>
+    <div class="auto-mode-container">
+      <label>
+        Auto Mode:
+        <input id="toggleAuto" type="checkbox">
+      </label>
+      <div class="control-group">
+        <label>
+          Moisture Low:
+          <input id="moistureLow" type="number" min="0" max="100" value="30">
+        </label>
+      </div>
+      <div class="control-group">
+        <label>
+          Moisture High:
+          <input id="moistureHigh" type="number" min="0" max="100" value="70">
+        </label>
+      </div>
+    </div>
+    <!-- Checkbox thời gian -->
+    <div class="control-group">
+      <label>
+        Enable Time Control:
+        <input id="toggleTimeControl" type="checkbox">
+      </label>
+    </div>
+
+    <!-- Phần nhập thời gian luôn hiển thị -->
+    <div class="control-group">
+      <label>
+        Start Time (HH:mm):
+        <input id="turnOnTime" type="time" value="06:00">
+      </label>
+    </div>
+    <div class="control-group">
+      <label>
+        End Time (HH:mm):
+        <input id="turnOffTime" type="time" value="18:00">
+      </label>
+    </div>
+
+    <!-- Nút thực hiện gửi toàn bộ dữ liệu -->
+    <button class="execute-button" id="executeButton">Execute</button>
+    <!-- Nút chuyển đến trang lịch sử -->
+    <button class="history-button">
+      <a href="history" >View Control History</a>
+    </button>
+    <button class="history-button">
+      <a href="/" >Logout</a>
+    </button>
+  </div>
+
+  <script>
+    // Biến WebSocket
+    let ws;
+
+    // Hàm khởi tạo kết nối WebSocket
+    function connectWebSocket() {
+        ws = new WebSocket("ws://192.168.100.231:81/");
+
+        ws.onopen = () => {
+            document.getElementById("status").textContent = "Connected";
+            console.log("WebSocket connection established.");
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.moisture !== undefined) {
+                document.getElementById("moisture").textContent = `Moisture: ${data.moisture}%`;
+            }
+
+            if (data.temperature !== undefined) {
+                document.getElementById("temperature").textContent = `Temperature: ${data.temperature}°C`;
+            }
+        };
+
+        ws.onclose = () => {
+            document.getElementById("status").textContent = "Disconnected";
+            console.log("WebSocket connection closed. Reconnecting...");
+            // Tự động kết nối lại sau 3 giây
+            setTimeout(connectWebSocket, 3000);
+        };
+
+        ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+    }
+
+    // Gọi hàm khởi tạo WebSocket khi trang được tải
+    window.onload = () => {
+        connectWebSocket();
+
+        // Khôi phục dữ liệu từ localStorage
+        if (localStorage.getItem("pumpState")) {
+            document.getElementById("togglePump").checked = localStorage.getItem("pumpState") === "on";
+        }
+        if (localStorage.getItem("pumpSpeed")) {
+            document.getElementById("pumpSpeed").value = localStorage.getItem("pumpSpeed");
+            document.getElementById("pumpSpeedValue").textContent = localStorage.getItem("pumpSpeed");
+        }
+        if (localStorage.getItem("autoMode")) {
+            document.getElementById("toggleAuto").checked = localStorage.getItem("autoMode") === "true";
+        }
+        if (localStorage.getItem("moistureLow")) {
+            document.getElementById("moistureLow").value = localStorage.getItem("moistureLow");
+        }
+        if (localStorage.getItem("moistureHigh")) {
+            document.getElementById("moistureHigh").value = localStorage.getItem("moistureHigh");
+        }
+        if (localStorage.getItem("turnOnTime")) {
+            document.getElementById("turnOnTime").value = localStorage.getItem("turnOnTime");
+        }
+        if (localStorage.getItem("turnOffTime")) {
+            document.getElementById("turnOffTime").value = localStorage.getItem("turnOffTime");
+        }
+        if (localStorage.getItem("timeControlEnabled")) {
+            document.getElementById("toggleTimeControl").checked = localStorage.getItem("timeControlEnabled") === "true";
+        }
+    };
+
+    // Cập nhật giá trị và lưu vào localStorage
+    document.getElementById("togglePump").onchange = () => {
+        localStorage.setItem("pumpState", document.getElementById("togglePump").checked ? "on" : "off");
+    };
+
+    document.getElementById("pumpSpeed").oninput = () => {
+        const speed = document.getElementById("pumpSpeed").value;
+        document.getElementById("pumpSpeedValue").textContent = speed;
+        localStorage.setItem("pumpSpeed", speed);
+    };
+
+    document.getElementById("toggleAuto").onchange = () => {
+        localStorage.setItem("autoMode", document.getElementById("toggleAuto").checked ? "true" : "false");
+    };
+
+    document.getElementById("moistureLow").oninput = () => {
+        localStorage.setItem("moistureLow", document.getElementById("moistureLow").value);
+    };
+
+    document.getElementById("moistureHigh").oninput = () => {
+        localStorage.setItem("moistureHigh", document.getElementById("moistureHigh").value);
+    };
+
+    document.getElementById("toggleTimeControl").onchange = () => {
+        localStorage.setItem("timeControlEnabled", document.getElementById("toggleTimeControl").checked ? "true" : "false");
+    };
+
+    document.getElementById("turnOnTime").onchange = () => {
+        localStorage.setItem("turnOnTime", document.getElementById("turnOnTime").value);
+    };
+
+    document.getElementById("turnOffTime").onchange = () => {
+        localStorage.setItem("turnOffTime", document.getElementById("turnOffTime").value);
+    };
+
+    // Gửi dữ liệu khi người dùng nhấn nút "Execute"
+    document.getElementById("executeButton").onclick = () => {
+        const data = {
+            pumpState: document.getElementById("togglePump").checked,
+            pumpSpeed: document.getElementById("pumpSpeed").value,
+            autoMode: document.getElementById("toggleAuto").checked,
+            moistureThresholdLow: parseInt(document.getElementById("moistureLow").value),
+            moistureThresholdHigh: parseInt(document.getElementById("moistureHigh").value),
+            useTimeControl: document.getElementById("toggleTimeControl").checked,
+            turnOnTime: document.getElementById("turnOnTime").value,
+            turnOffTime: document.getElementById("turnOffTime").value,
+        };
+
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(data));
+            console.log("Sent data:", data);
+        } else {
+            console.log("WebSocket connection not open yet.");
+        }
+    };
+</script>
+
+</body>
+</html>

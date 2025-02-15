@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng nhập</title>
+    <style>
+        html, body {
+            text-align: center;
+            background: #181818;
+            width: 400px;
+            height: auto;
+            padding: 25px;
+            position: absolute;
+            left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0px 0px 20px 0px #000;
+            font-family: Arial, sans-serif;
+        }
+
+        .box h1 {
+            color: #fff;
+        }
+
+        .box {
+            position: relative;
+        }
+
+        .box label {
+            color: #fff;
+            display: block;
+            margin: 15px 0 5px;
+            transition: 0.3s;
+            position: absolute;
+            top: 30%;
+            left: 10px;
+            transform: translateY(-50%);
+            pointer-events: none;
+            opacity: 1;
+        }
+
+        .box input[type="text"], .box input[type="password"] {
+            background: none;
+            outline: none;
+            width: 160px;
+            height: 40px;
+            border-radius: 40px;
+            padding: 0px 15px;
+            margin: 15px 0px;
+            border: solid 2px #002cff;
+            transition: 1s;
+            color: #fff;
+            font-size: 18px;
+            position: relative;
+            left: 50px;
+        }
+
+        .box input[type="text"]:focus + label,
+        .box input[type="password"]:focus + label {
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .box input[type="password"]:focus, .box input[type="text"]:focus {
+            width: 320px;
+            border-color: chartreuse;
+            transition: 1s;
+            transform: translateX(-50px);
+        }
+
+        /* Nút đăng nhập với thiết kế mới */
+        .box input[type="button"] {
+            background: linear-gradient(45deg, #002cff, #00d4ff);
+            outline: none;
+            width: 180px;
+            height: 45px;
+            border-radius: 30px;
+            margin: 15px 0px;
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.25);
+        }
+
+        .box input[type="button"]:hover {
+            background: linear-gradient(45deg, #00d4ff, #002cff);
+            transform: translateY(-3px);
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .box input[type="button"]:active {
+            transform: translateY(2px);
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .box a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .box a:hover {
+            text-decoration: underline;
+        }
+
+        #error-message {
+            color: red;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>ĐĂNG NHẬP TÀI KHOẢN</h1>
+        <div style="position: relative;">
+            <input type="text" id="username" name="username" placeholder=" " />
+            <label for="username">Tên đăng nhập:</label>
+        </div>
+        <div style="position: relative;">
+            <input type="password" id="password" name="password" placeholder=" " />
+            <label for="password">Mật khẩu:</label>
+        </div>
+        <input type="button" id="loginButton" value="Đăng nhập" /><br>
+        <a href="dangky.php" title="Đăng ký">Đăng ký</a>
+        <div id="error-message">Tên đăng nhập hoặc mật khẩu sai. Vui lòng thử lại.</div>
+    </div>
+
+    <script>
+        // Tạo WebSocket
+        let ws;
+        let reconnectInterval = 5000; // Thời gian chờ trước khi thử kết nối lại (ms)
+    
+        function connectWebSocket() {
+            ws = new WebSocket("ws://192.168.100.231:81/");
+    
+            // Lắng nghe sự kiện mở kết nối
+            ws.onopen = function () {
+                console.log("WebSocket connection opened.");
+                startKeepAlive(); // Bắt đầu gửi gói "keep-alive"
+            };
+    
+            // Lắng nghe sự kiện lỗi WebSocket
+            ws.onerror = function (error) {
+                console.error("WebSocket error: ", error);
+            };
+    
+            // Lắng nghe sự kiện đóng WebSocket
+            ws.onclose = function () {
+                console.log("WebSocket connection closed. Attempting to reconnect...");
+                stopKeepAlive(); // Dừng gửi gói "keep-alive"
+                setTimeout(connectWebSocket, reconnectInterval); // Tự động kết nối lại
+            };
+        }
+    
+        // Gửi gói tin "keep-alive" định kỳ
+        let keepAliveInterval;
+        function startKeepAlive() {
+            keepAliveInterval = setInterval(function () {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send("ping"); // Gửi gói tin "ping" để giữ kết nối
+                    console.log("Sent keep-alive packet.");
+                }
+            }, 5000); // Gửi gói tin mỗi 30 giây
+        }
+    
+        function stopKeepAlive() {
+            clearInterval(keepAliveInterval);
+        }
+    
+        // Bắt đầu kết nối WebSocket
+        connectWebSocket();
+    
+        // Xử lý đăng nhập
+        document.getElementById('loginButton').addEventListener('click', function () {
+            // Lấy giá trị username và password từ các ô input
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+    
+            // Danh sách người dùng hợp lệ
+            const validUsers = [
+                { username: 'user1', password: '1234' },
+                { username: 'user2', password: '1234' }
+            ];
+    
+            // Kiểm tra thông tin đăng nhập
+            const isValid = validUsers.some(user => user.username === username && user.password === password);
+    
+            if (isValid) {
+                // Đảm bảo WebSocket đã mở trước khi chuyển hướng
+                if (ws.readyState === WebSocket.OPEN) {
+                    console.log("WebSocket is open. Redirecting...");
+                    window.location.href = 'index'; // Điều hướng tới trang index
+                } else {
+                    console.log("WebSocket connection not open yet.");
+                    ws.onopen = function () {
+                        console.log("WebSocket opened. Redirecting...");
+                        window.location.href = 'index';
+                    };
+                }
+            } else {
+                // Hiển thị thông báo lỗi nếu thông tin không đúng
+                const errorMessage = document.getElementById('error-message');
+                errorMessage.style.display = 'block';
+                errorMessage.innerText = "Tên đăng nhập hoặc mật khẩu không đúng!";
+            }
+        });
+    </script>
+    
+</body>
+</html>

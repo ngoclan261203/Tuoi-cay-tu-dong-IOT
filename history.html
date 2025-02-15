@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control Data History</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+    header {
+      background-color: #4CAF50;
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 900px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      font-size: 24px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    /* Thêm khung cố định cho bảng */
+    .table-container {
+      max-height: 300px; /* Chiều cao cố định */
+      overflow-y: auto; /* Thanh cuộn dọc */
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 12px 15px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    th {
+      background-color: #f4f4f4;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+    .back-button {
+      display: inline-block;
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .back-button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Pump Control System</h2>
+  </header>
+  <div class="container">
+    <h1>Control Data History</h1>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Mode</th>
+            <th>Pump State</th>
+            <th>Pump Speed</th>
+          </tr>
+        </thead>
+        <tbody id="data-table">
+          <tr>
+            <td colspan="4">Loading data...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <a href="/index" class="back-button">Back to Control</a>
+  </div>
+
+
+  <script>
+    // Hàm lấy dữ liệu lịch sử từ API
+    async function fetchControlData() {
+      try {
+        // Kết nối tới API
+        const response = await fetch("http://192.168.100.231:81/api/control-data");
+        const data = await response.json();//Chuyển dữ liệu từ định dạng JSON (do API trả về) thành một đối tượng JavaScript.
+
+        // Hiển thị dữ liệu trong bảng
+        const tableBody = document.getElementById("data-table");
+        tableBody.innerHTML = ""; // Xóa nội dung cũ
+
+        // Kiểm tra nếu có dữ liệu
+        if (data.length > 0) {
+          data.forEach((item) => {
+            const row = document.createElement("tr");//tạo 1 hàng
+            row.innerHTML = `
+              <td>${new Date(item.timestamp).toLocaleString()}</td>
+              <td>${item.mode}</td>
+              <td>${item.pumpState}</td>
+              <td>${item.pumpSpeed}</td>
+            `;//thêm nội dung cho hàng vừa tạo
+            tableBody.appendChild(row);//thêm hàng vào bảng
+          });
+        } else {
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="4">No data available.</td>
+            </tr>
+          `;
+        }
+      } catch (error) {
+        console.error("Failed to fetch control data:", error);
+        const tableBody = document.getElementById("data-table");
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="4">Error fetching data.</td>
+          </tr>
+        `;
+      }
+    }
+
+    // Gọi hàm fetchControlData khi tải trang
+    fetchControlData();
+    // Cập nhật dữ liệu sau mỗi 5 giây
+    setInterval(fetchControlData, 5000);
+  </script>
+</body>
+</html>
